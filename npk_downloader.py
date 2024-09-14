@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import argparse
 import requests
 
 # Import the lists from the release_tree module
@@ -76,15 +77,87 @@ def get_version(branch_selection):
             return user_version
 
 
+def get_all(branch):
+    # long term branch 
+    if branch == 1:
+        for arch in range(1,9):
+            for i in long_term:
+                get_npk(arch, branch, i)
+    elif branch == 2:
+        for arch in range(1,9):
+            for i in stable_branch:
+                get_npk(arch, branch, i)
+    elif branch == 3:
+        for arch in range(1,9):
+            for i in testing_release:
+                get_npk(arch, branch, i)
+    else:
+        for arch in range(1,9):
+            for i in dev_release:
+                get_npk(arch, branch, i)
+
+
+def get_npk(arch, branch, version):
+    # example target
+    # https://download.mikrotik.com/routeros/6.30.1/routeros-mipsbe-6.30.1.npk
+    # testing release tree
+    # https://download.mikrotik.com/routeros/7.16rc4/routeros-7.16rc4-arm.npk
+    arch_mapper = {1: "arm", 2: "arm64", 3: "mipsbe", 4: "mmips", 5: "smips", 6: "tile", 7: "ppc", 8: "x86"}
+    
+    arch_normalized = arch_mapper.get(arch)
+
+    if branch == 3:
+        if arch_normalized == "x86":
+            base_url = f"https://download.mikrotik.com/routeros/{version}/routeros-{version}-{arch_normalized}.npk"
+        else:
+            base_url = f"https://download.mikrotik.com/routeros/{version}/routeros-{version}-{arch_normalized}.npk"
+    else:
+
+        if arch_normalized != "x86":
+            base_url = f"https://download.mikrotik.com/routeros/{version}/routeros-{arch_normalized}-{version}.npk"
+        else:
+            base_url = f"https://download.mikrotik.com/routeros/{version}/routeros-{version}.npk"
+   
+    print("[+] Target url:")
+    print(base_url)
+    req = requests.get(base_url)
+    print(f"[+] Status Code: {req.status_code}")
+    if req.status_code == 404:
+        return
+    dst_file = base_url.split("/")[-1]
+
+    with open(dst_file, mode="wb") as file:
+        file.write(req.content)
+
 
 if __name__ == '__main__':
 
-    user_arch = arch_selection()
-    user_branch = branch_selection()
-    user_version = False
+    parser = argparse.ArgumentParser()
+
+    # Create a mutually exclusive group
+    group = parser.add_mutually_exclusive_group()
+
+    # Add the arguments to the group
+    group.add_argument("-a", "--all", help="Download all .npk files from a specific branch", action="store_true", dest="all")
+    group.add_argument("-s", "--single", help="Download single .npk file from a branch", action="store_true", dest="single")
+
+    # Parse the arguments
+    args = parser.parse_args()
+
+    # Example usage of parsed arguments
+    if args.all:
+        user_branch = branch_selection()
+        get_all(user_branch)
+    elif args.single:
+        print(f"Downloading single .npk file from {args.single}")
+
+        user_arch = arch_selection()
+        user_branch = branch_selection()
+        user_version = False
     
-    while user_version == False:
-        user_version = get_version(user_branch)
+        while user_version == False:
+            user_version = get_version(user_branch)
     
-    # debugging checks 
-    print(user_arch, user_branch, user_version)
+        # debugging checks 
+        # print(user_arch, user_branch, user_version)
+        get_npk(user_arch, user_branch, user_version)
