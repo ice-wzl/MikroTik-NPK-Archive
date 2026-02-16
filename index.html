@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MikroTik NPK Archive</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 1rem; background: #1a1a1a; color: #e0e0e0; }
+    .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    h1 { font-size: 1.25rem; font-weight: 600; margin: 0; }
+    .coffee { font-size: 0.85rem; color: #888; }
+    .coffee a { color: #6ab; }
+    .bar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; }
+    input[type="search"], select { padding: 0.4rem 0.6rem; border: 1px solid #444; border-radius: 4px; background: #2a2a2a; color: #e0e0e0; font-size: 0.9rem; }
+    input[type="search"] { min-width: 180px; }
+    label { font-size: 0.85rem; color: #999; }
+    .count { font-size: 0.85rem; color: #888; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #333; }
+    th { color: #888; font-weight: 500; }
+    a { color: #6ab; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .load { color: #888; }
+    .err { color: #c66; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>MikroTik NPK Archive</h1>
+    <span class="coffee"><a href="https://buymeacoffee.com/icewzl" target="_blank" rel="noopener">Buy me a coffee</a></span>
+  </div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search firmware..." autocomplete="off">
+    <label>Branch <select id="branch"><option value="">All</option></select></label>
+    <label>Arch <select id="arch"><option value="">All</option></label>
+    <span class="count" id="count"></span>
+  </div>
+  <div id="out" class="load">Loading…</div>
+
+  <script>
+    let list = [];
+    const qEl = document.getElementById("q");
+    const branchEl = document.getElementById("branch");
+    const archEl = document.getElementById("arch");
+    const countEl = document.getElementById("count");
+    const outEl = document.getElementById("out");
+
+    function render() {
+      const q = (qEl.value || "").trim().toLowerCase();
+      const branch = branchEl.value;
+      const arch = archEl.value;
+      let rows = list;
+      if (q) rows = rows.filter(r => r.name.toLowerCase().includes(q) || r.path.toLowerCase().includes(q));
+      if (branch) rows = rows.filter(r => r.branch === branch);
+      if (arch) rows = rows.filter(r => r.arch === arch);
+
+      countEl.textContent = rows.length + " file(s)";
+      if (rows.length === 0) {
+        outEl.innerHTML = "<p class=\"load\">No matches.</p>";
+        return;
+      }
+      let html = "<table><thead><tr><th>Branch</th><th>Arch</th><th>File</th><th></th></tr></thead><tbody>";
+      rows.forEach(r => {
+        html += "<tr><td>" + escapeHtml(r.branch) + "</td><td>" + escapeHtml(r.arch) + "</td><td>" + escapeHtml(r.name) + "</td><td><a href=\"" + escapeAttr(r.path) + "\" download>Download</a></td></tr>";
+      });
+      html += "</tbody></table>";
+      outEl.innerHTML = html;
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s;
+      return div.innerHTML;
+    }
+    function escapeAttr(s) {
+      return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function fillFilters() {
+      const branches = [...new Set(list.map(r => r.branch))].sort();
+      const archs = [...new Set(list.map(r => r.arch))].sort();
+      branchEl.innerHTML = "<option value=\"\">All</option>" + branches.map(b => "<option value=\"" + escapeAttr(b) + "\">" + escapeHtml(b) + "</option>").join("");
+      archEl.innerHTML = "<option value=\"\">All</option>" + archs.map(a => "<option value=\"" + escapeAttr(a) + "\">" + escapeHtml(a) + "</option>").join("");
+    }
+
+    fetch("firmware.json")
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(data => {
+        list = data;
+        fillFilters();
+        render();
+        qEl.addEventListener("input", render);
+        qEl.addEventListener("change", render);
+        branchEl.addEventListener("change", render);
+        archEl.addEventListener("change", render);
+      })
+      .catch(() => {
+        outEl.innerHTML = "<p class=\"err\">Could not load firmware list. Ensure firmware.json exists (run build_index.py).</p>";
+      });
+  </script>
+</body>
+</html>
