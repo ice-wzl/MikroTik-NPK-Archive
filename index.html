@@ -11,9 +11,18 @@
     h1 { font-size: 1.25rem; font-weight: 600; margin: 0; }
     .coffee { font-size: 0.85rem; color: #888; }
     .coffee a { color: #6ab; }
+    .browse { margin-bottom: 1.25rem; padding: 0.75rem; background: #252525; border-radius: 6px; }
+    .browse h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 0.5rem 0; color: #ccc; }
+    .browse-row { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: baseline; margin-bottom: 0.5rem; }
+    .browse-row:last-child { margin-bottom: 0; }
+    .browse-row .label { font-size: 0.85rem; color: #888; margin-right: 0.25rem; }
+    .browse-row a { font-size: 0.9rem; }
+    .browse-row a + a { margin-left: 0.25rem; }
     .bar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; }
-    input[type="search"], select { padding: 0.4rem 0.6rem; border: 1px solid #444; border-radius: 4px; background: #2a2a2a; color: #e0e0e0; font-size: 0.9rem; }
-    input[type="search"] { min-width: 180px; }
+    input[type="search"], select, button { padding: 0.4rem 0.6rem; border: 1px solid #444; border-radius: 4px; background: #2a2a2a; color: #e0e0e0; font-size: 0.9rem; }
+    input[type="search"] { min-width: 200px; }
+    button { cursor: pointer; }
+    button:hover { background: #333; }
     label { font-size: 0.85rem; color: #999; }
     .count { font-size: 0.85rem; color: #888; }
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
@@ -30,8 +39,14 @@
     <h1>MikroTik NPK Archive</h1>
     <span class="coffee"><a href="https://buymeacoffee.com/icewzl" target="_blank" rel="noopener">Buy me a coffee</a></span>
   </div>
+  <div id="browse" class="browse" style="display: none;">
+    <h2>Browse firmware</h2>
+    <div class="browse-row"><span class="label">By branch:</span> <span id="browse-branches"></span></div>
+    <div class="browse-row"><span class="label">By arch:</span> <span id="browse-archs"></span></div>
+  </div>
   <div class="bar">
-    <input type="search" id="q" placeholder="Search firmware..." autocomplete="off">
+    <input type="search" id="q" placeholder="Search by name or path..." autocomplete="off">
+    <button type="button" id="btnSearch">Search</button>
     <label>Branch <select id="branch"><option value="">All</option></select></label>
     <label>Arch <select id="arch"><option value="">All</option></label>
     <span class="count" id="count"></span>
@@ -77,11 +92,28 @@
       return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
+    function setBranch(b) { branchEl.value = b || ""; archEl.value = ""; qEl.value = ""; render(); }
+    function setArch(a) { archEl.value = a || ""; branchEl.value = ""; qEl.value = ""; render(); }
+
     function fillFilters() {
       const branches = [...new Set(list.map(r => r.branch))].sort();
       const archs = [...new Set(list.map(r => r.arch))].sort();
       branchEl.innerHTML = "<option value=\"\">All</option>" + branches.map(b => "<option value=\"" + escapeAttr(b) + "\">" + escapeHtml(b) + "</option>").join("");
       archEl.innerHTML = "<option value=\"\">All</option>" + archs.map(a => "<option value=\"" + escapeAttr(a) + "\">" + escapeHtml(a) + "</option>").join("");
+
+      const browseBranches = document.getElementById("browse-branches");
+      const browseArchs = document.getElementById("browse-archs");
+      browseBranches.innerHTML = "<a href=\"#\" data-browse=\"branch\" data-value=\"\">All</a> " + branches.map(b => "<a href=\"#\" data-browse=\"branch\" data-value=\"" + escapeAttr(b) + "\">" + escapeHtml(b) + "</a>").join(" ");
+      browseArchs.innerHTML = "<a href=\"#\" data-browse=\"arch\" data-value=\"\">All</a> " + archs.map(a => "<a href=\"#\" data-browse=\"arch\" data-value=\"" + escapeAttr(a) + "\">" + escapeHtml(a) + "</a>").join(" ");
+
+      browseBranches.querySelectorAll("a").forEach(a => {
+        a.addEventListener("click", e => { e.preventDefault(); setBranch(a.getAttribute("data-value")); });
+      });
+      browseArchs.querySelectorAll("a").forEach(a => {
+        a.addEventListener("click", e => { e.preventDefault(); setArch(a.getAttribute("data-value")); });
+      });
+
+      document.getElementById("browse").style.display = "block";
     }
 
     fetch("firmware.json")
@@ -90,8 +122,10 @@
         list = data;
         fillFilters();
         render();
+        document.getElementById("btnSearch").addEventListener("click", render);
         qEl.addEventListener("input", render);
         qEl.addEventListener("change", render);
+        qEl.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); render(); } });
         branchEl.addEventListener("change", render);
         archEl.addEventListener("change", render);
       })
