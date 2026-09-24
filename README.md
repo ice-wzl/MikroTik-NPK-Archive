@@ -26,7 +26,13 @@ options:
   -s, --single  Download single .npk file from a branch
 ````
 ### Single Version 
-- Simply pick the branch, version and architecture you wish to pull. I have built out the valid versoin from the MikroTik changelogs.
+- Simply pick the branch, version and architecture you wish to pull. By default the tool reads MikroTik's live historical changelog, so newly published releases do not require a code update. Use `--offline` for the bundled `changelog.txt` snapshot or `--static` for the legacy Python lists.
+- The architecture menu includes historical MIPS-LE packages. The downloader also accounts for MikroTik's filename changes: v6 and older use `routeros-ARCH-VERSION.npk` (`powerpc` for PPC), while v7 uses `routeros-VERSION-ARCH.npk` and omits the architecture from x86 filenames.
+- Select `All historical releases` to cover every version currently exposed by MikroTik's changelog, regardless of release channel. The tool also includes 6.21 and 6.32, whose packages remain on MikroTik's server even though the changelog omits them. MikroTik's current official history and versioned archive go back to RouterOS 3.30; older 2.x releases are not available through the same archive layout.
+- To avoid storing a package twice, point `--existing-dir` at an existing archive. The complete tree is scanned once, across all release channels, and packages are compared by version and architecture. This also recognizes the older reversed v7 filenames already present in some archives:
+````
+python3 npk_downloader.py --all --existing-dir /var/www/html/downloads
+````
 ````
 python3 npk_downloader.py -s
 Downloading single .npk file from True
