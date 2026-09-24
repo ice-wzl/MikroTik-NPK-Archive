@@ -40,6 +40,20 @@ python3 npk_downloader.py --all \
 `--download-dir` controls where new packages are written. When both paths are
 the same, new files merge into the existing branch/architecture tree without
 overwriting packages already indexed there.
+
+### Rebuild the web index
+
+After changing the server archive, rebuild the site index directly from the
+download tree:
+
+````
+sudo python3 build_index.py \
+  --downloads-dir /var/www/html/downloads \
+  --output /var/www/html/firmware.json
+````
+
+The output is written to a temporary file and then atomically replaces the old
+index, so the website will not observe a partially written JSON document.
 ````
 python3 npk_downloader.py -s
 Downloading single .npk file from True
