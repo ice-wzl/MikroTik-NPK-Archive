@@ -279,15 +279,26 @@ def index_existing_packages(paths):
     return packages
 
 
-def get_download_path(branch, arch_name, filename, create=False):
+def get_download_path(
+    branch,
+    arch_name,
+    filename,
+    create=False,
+    download_base_dir=DOWNLOAD_BASE_DIR,
+):
     branch_dir = BRANCH_DIRS.get(branch, "unknown")
-    download_dir = Path(DOWNLOAD_BASE_DIR) / branch_dir / arch_name
+    download_dir = Path(download_base_dir).expanduser() / branch_dir / arch_name
     if create:
         download_dir.mkdir(parents=True, exist_ok=True)
     return download_dir / filename
 
 
-def get_all(branch, existing_packages=None, **version_options):
+def get_all(
+    branch,
+    existing_packages=None,
+    download_base_dir=DOWNLOAD_BASE_DIR,
+    **version_options,
+):
     versions = get_versions_for_branch(branch, **version_options)
     if not versions:
         print(f"[!] No versions found for branch {branch}")
@@ -301,10 +312,18 @@ def get_all(branch, existing_packages=None, **version_options):
                 branch,
                 version,
                 existing_packages=existing_packages,
+                download_base_dir=download_base_dir,
             )
 
 
-def get_npk(arch, branch, version, session=requests, existing_packages=None):
+def get_npk(
+    arch,
+    branch,
+    version,
+    session=requests,
+    existing_packages=None,
+    download_base_dir=DOWNLOAD_BASE_DIR,
+):
     """Download one combined RouterOS NPK, streaming it to a partial file."""
     arch_name = ARCHITECTURES.get(arch)
     if arch_name is None:
@@ -322,7 +341,12 @@ def get_npk(arch, branch, version, session=requests, existing_packages=None):
 
     filename = filename_for_version(version, arch_name)
     url = download_url(version, filename)
-    destination = get_download_path(branch, arch_name, filename)
+    destination = get_download_path(
+        branch,
+        arch_name,
+        filename,
+        download_base_dir=download_base_dir,
+    )
     if destination.exists():
         print(f"[=] Skipping {filename} - already exists")
         return True
@@ -337,7 +361,13 @@ def get_npk(arch, branch, version, session=requests, existing_packages=None):
                 return False
             response.raise_for_status()
 
-            destination = get_download_path(branch, arch_name, filename, create=True)
+            destination = get_download_path(
+                branch,
+                arch_name,
+                filename,
+                create=True,
+                download_base_dir=download_base_dir,
+            )
             partial = destination.with_suffix(destination.suffix + ".part")
             with open(partial, "wb") as package_file:
                 for chunk in response.iter_content(chunk_size=1024 * 1024):
@@ -393,6 +423,12 @@ def main():
             "specified more than once"
         ),
     )
+    parser.add_argument(
+        "--download-dir",
+        default=DOWNLOAD_BASE_DIR,
+        metavar="PATH",
+        help="Write downloaded branch/architecture trees below PATH",
+    )
     args = parser.parse_args()
 
     version_options = {
@@ -407,6 +443,7 @@ def main():
         get_all(
             branch_selection(),
             existing_packages=existing_packages,
+            download_base_dir=args.download_dir,
             **version_options,
         )
         return
@@ -423,6 +460,7 @@ def main():
         user_branch,
         user_version,
         existing_packages=existing_packages,
+        download_base_dir=args.download_dir,
     )
 
 

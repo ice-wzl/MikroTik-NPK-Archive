@@ -101,6 +101,20 @@ class ExistingArchiveTests(unittest.TestCase):
         self.assertTrue(result)
         session.get.assert_not_called()
 
+    def test_download_path_can_target_an_existing_archive_root(self):
+        path = downloader.get_download_path(
+            1,
+            "arm64",
+            "routeros-7.23.7-arm64.npk",
+            download_base_dir="/var/www/html/downloads",
+        )
+
+        self.assertEqual(
+            path,
+            Path("/var/www/html/downloads/long_term/arm64/"
+                 "routeros-7.23.7-arm64.npk"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

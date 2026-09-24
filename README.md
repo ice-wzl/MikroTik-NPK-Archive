@@ -31,8 +31,15 @@ options:
 - Select `All historical releases` to cover every version currently exposed by MikroTik's changelog, regardless of release channel. The tool also includes 6.21 and 6.32, whose packages remain on MikroTik's server even though the changelog omits them. MikroTik's current official history and versioned archive go back to RouterOS 3.30; older 2.x releases are not available through the same archive layout.
 - To avoid storing a package twice, point `--existing-dir` at an existing archive. The complete tree is scanned once, across all release channels, and packages are compared by version and architecture. This also recognizes the older reversed v7 filenames already present in some archives:
 ````
-python3 npk_downloader.py --all --existing-dir /var/www/html/downloads
+python3 npk_downloader.py --all \
+  --existing-dir /var/www/html/downloads \
+  --download-dir /var/www/html/downloads
 ````
+
+`--existing-dir` controls where the downloader looks for duplicates;
+`--download-dir` controls where new packages are written. When both paths are
+the same, new files merge into the existing branch/architecture tree without
+overwriting packages already indexed there.
 ````
 python3 npk_downloader.py -s
 Downloading single .npk file from True
